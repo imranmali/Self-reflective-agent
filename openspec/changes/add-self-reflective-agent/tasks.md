@@ -41,8 +41,8 @@
 
 ## 8. CI and integration
 
-- [ ] 8.1 Add `.github/workflows/ci.yml` (Node 22: `npm ci`, typecheck, tests, `openspec validate --all --strict`, offline demo, upload run artifact); verify workflow YAML parses and every step passes locally
-- [ ] 8.2 Run the full offline suite end to end and verify pass rate improves, net regressions are 0, and the report is generated
+- [x] 8.1 Add `.github/workflows/ci.yml` (Node 22: `npm ci`, typecheck, tests, `openspec validate --all --strict`, offline demo, upload run artifact); verify workflow YAML parses and every step passes locally
+- [x] 8.2 Run the full offline suite end to end and verify pass rate improves, net regressions are 0, and the report is generated
 
 ## Workflow follow-up
 

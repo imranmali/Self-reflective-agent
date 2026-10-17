@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OPENSPEC_TELEMETRY: "0"
+
+jobs:
+  build:
+    name: typecheck · test · spec · demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Validate OpenSpec specs and changes
+        run: npm run spec:validate
+
+      - name: Offline demo (full reflection loop, no API key)
+        run: npm run demo -- --quiet --out runs
+
+      - name: Upload demo run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-demo-run
+          path: runs/
+          if-no-files-found: ignore
