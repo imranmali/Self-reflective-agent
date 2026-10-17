@@ -2,8 +2,8 @@
 
 ## 1. Project setup
 
-- [ ] 1.1 Add `package.json` (ESM; scripts `start`, `demo`, `test`, `typecheck`), `tsconfig.json` (strict, NodeNext, noEmit) and `.gitignore`; verify `npm ci` succeeds
-- [ ] 1.2 Add dependencies `@anthropic-ai/sdk`, `zod` and dev deps `typescript`, `tsx`, `@types/node`; verify `npm run typecheck` runs on an empty `src/`
+- [x] 1.1 Add `package.json` (ESM; scripts `start`, `demo`, `test`, `typecheck`), `tsconfig.json` (strict, NodeNext, noEmit) and `.gitignore`; verify `npm ci` succeeds
+- [x] 1.2 Add dependencies `@anthropic-ai/sdk`, `zod` and dev deps `typescript`, `tsx`, `@types/node`; verify `npm run typecheck` runs on an empty `src/`
 
 ## 2. Domain types and providers
 
