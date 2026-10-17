@@ -7,26 +7,26 @@
 
 ## 2. Domain types and providers
 
-- [ ] 2.1 Define Zod schemas/types for Task (rubric, reference, hard checks, offline fixtures), Verdict, Critique, Constraint, Attempt, TaskRun, metrics in `src/types.ts`; verify typecheck passes
-- [ ] 2.2 Implement provider interface and balanced-brace JSON extractor in `src/llm/provider.ts`; verify `test/provider.test.ts` covers fenced JSON, braces inside strings and no-object errors
-- [ ] 2.3 Implement Anthropic provider with forced tool-use JSON, Zod validation, retry-with-feedback and temperature fallback in `src/llm/anthropic.ts`; verify with a fake client in `test/provider.test.ts` (invalid → retry → valid; per-role model routing)
-- [ ] 2.4 Implement deterministic offline provider (constraint-driven draft selection, keyword judge, keyword critic) in `src/llm/offline.ts`; verify determinism test in `test/provider.test.ts`
+- [x] 2.1 Define Zod schemas/types for Task (rubric, reference, hard checks, offline fixtures), Verdict, Critique, Constraint, Attempt, TaskRun, metrics in `src/types.ts`; verify typecheck passes
+- [x] 2.2 Implement provider interface and balanced-brace JSON extractor in `src/llm/provider.ts`; verify `test/provider.test.ts` covers fenced JSON, braces inside strings and no-object errors
+- [x] 2.3 Implement Anthropic provider with forced tool-use JSON, Zod validation, retry-with-feedback and temperature fallback in `src/llm/anthropic.ts`; verify with a fake client in `test/provider.test.ts` (invalid → retry → valid; per-role model routing)
+- [x] 2.4 Implement deterministic offline provider (constraint-driven draft selection, keyword judge, keyword critic) in `src/llm/offline.ts`; verify determinism test in `test/provider.test.ts`
 
 ## 3. Answer evaluation
 
-- [ ] 3.1 Write judge prompt (blind, anchored scale, evidence rationales) in `src/agent/prompts.ts`; verify a test asserts no iteration/revision wording in judge prompts
-- [ ] 3.2 Implement judge call, criterion normalisation (omitted → 0, unknown ignored), weighted score and multi-sample aggregation in `src/agent/judge.ts`; verify `test/judge.test.ts`
-- [ ] 3.3 Implement deterministic hard checks (word limit, required/forbidden terms, `Final answer:`) with −1.5 penalty and pass gating; verify `test/judge.test.ts` scenarios from the answer-evaluation spec
+- [x] 3.1 Write judge prompt (blind, anchored scale, evidence rationales) in `src/agent/prompts.ts`; verify a test asserts no iteration/revision wording in judge prompts
+- [x] 3.2 Implement judge call, criterion normalisation (omitted → 0, unknown ignored), weighted score and multi-sample aggregation in `src/agent/judge.ts`; verify `test/judge.test.ts`
+- [x] 3.3 Implement deterministic hard checks (word limit, required/forbidden terms, `Final answer:`) with −1.5 penalty and pass gating; verify `test/judge.test.ts` scenarios from the answer-evaluation spec
 
 ## 4. Reasoning critique
 
-- [ ] 4.1 Write critic prompt including verdict, hard-check failures and constraints already in force; verify `test/critic.test.ts` asserts ledger appears in the prompt
-- [ ] 4.2 Implement critique call, hard-check → stable constraint mapping (no answer leakage) and deduplicating capped ledger in `src/agent/critic.ts`; verify `test/critic.test.ts` (dedupe, cap keeps newest, no leak, stable text)
+- [x] 4.1 Write critic prompt including verdict, hard-check failures and constraints already in force; verify `test/critic.test.ts` asserts ledger appears in the prompt
+- [x] 4.2 Implement critique call, hard-check → stable constraint mapping (no answer leakage) and deduplicating capped ledger in `src/agent/critic.ts`; verify `test/critic.test.ts` (dedupe, cap keeps newest, no leak, stable text)
 
 ## 5. Reflection loop
 
-- [ ] 5.1 Implement executor (first draft vs. constrained revision prompt) in `src/agent/executor.ts`; verify loop test asserts first request has no constraints and revisions include previous best + constraints
-- [ ] 5.2 Implement `SelfReflectiveAgent` in `src/agent/loop.ts`: revise-from-best, critique every non-final attempt, stop on pass/plateau/budget/error, return best; verify `test/loop.test.ts` covers pass, regression, plateau, budget of one and judge failure mid-run
+- [x] 5.1 Implement executor (first draft vs. constrained revision prompt) in `src/agent/executor.ts`; verify loop test asserts first request has no constraints and revisions include previous best + constraints
+- [x] 5.2 Implement `SelfReflectiveAgent` in `src/agent/loop.ts`: revise-from-best, critique every non-final attempt, stop on pass/plateau/budget/error, return best; verify `test/loop.test.ts` covers pass, regression, plateau, budget of one and judge failure mid-run
 
 ## 6. Metrics, logging and report
 
