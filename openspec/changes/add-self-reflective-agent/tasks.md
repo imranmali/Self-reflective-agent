@@ -30,14 +30,14 @@
 
 ## 6. Metrics, logging and report
 
-- [ ] 6.1 Implement per-task metrics and suite summary in `src/metrics/metrics.ts`; verify `test/metrics.test.ts` (gap closed, regression count, zero net regressions, tokens-per-point null when no gain)
-- [ ] 6.2 Implement JSONL `RunLogger`, console trace and `report.md` renderer in `src/metrics/logger.ts`; verify `test/metrics.test.ts` asserts the four run artifacts exist and `judged` events carry the specified fields
+- [x] 6.1 Implement per-task metrics and suite summary in `src/metrics/metrics.ts`; verify `test/metrics.test.ts` (gap closed, regression count, zero net regressions, tokens-per-point null when no gain)
+- [x] 6.2 Implement JSONL `RunLogger`, console trace and `report.md` renderer in `src/metrics/logger.ts`; verify `test/metrics.test.ts` asserts the four run artifacts exist and `judged` events carry the specified fields
 
 ## 7. Eval runner and task suite
 
-- [ ] 7.1 Author `tasks/suite.json` with four tasks (idempotency keys, Kafka poison retry, capacity math, Postgres indexing) incl. offline fixtures exercising pass, regression, hard-check and plateau paths; verify suite parses
-- [ ] 7.2 Implement CLI in `src/cli.ts` (flags, provider default/validation, per-role models, summary table); verify `test/cli.test.ts` (unknown provider fails, invalid suite rejected, `--only` subset, offline default without key)
-- [ ] 7.3 Write README (quick start, architecture, design decisions, metrics, caveats); verify the documented `npm test` and `npm run demo` commands run as written
+- [x] 7.1 Author `tasks/suite.json` with four tasks (idempotency keys, Kafka poison retry, capacity math, Postgres indexing) incl. offline fixtures exercising pass, regression, hard-check and plateau paths; verify suite parses
+- [x] 7.2 Implement CLI in `src/cli.ts` (flags, provider default/validation, per-role models, summary table); verify `test/cli.test.ts` (unknown provider fails, invalid suite rejected, `--only` subset, offline default without key)
+- [x] 7.3 Write README (quick start, architecture, design decisions, metrics, caveats); verify the documented `npm test` and `npm run demo` commands run as written
 
 ## 8. CI and integration
 

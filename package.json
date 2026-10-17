@@ -6,7 +6,8 @@
     "test": "tsx --test test/*.test.ts",
     "start": "tsx src/cli.ts",
     "demo": "tsx src/cli.ts --provider offline",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "spec:validate": "openspec validate --all --strict"
   },
   "license": "ISC",
   "dependencies": {
@@ -14,6 +15,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@fission-ai/openspec": "^1.14.3",
     "@types/node": "^26.6.5",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
