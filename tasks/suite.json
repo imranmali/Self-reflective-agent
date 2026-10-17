@@ -1,0 +1,89 @@
+[
+  {
+    "id": "idempotency-keys",
+    "prompt": "Explain how idempotency keys make a payment API safe to retry. Use the header name Idempotency-Key. Maximum 120 words.",
+    "reference": "Client sends a unique key per logical operation; server atomically stores key + request fingerprint and the stored response; retries with the same key replay the stored response; same key with different payload is rejected; concurrent in-flight duplicate gets 409; keys expire after a TTL.",
+    "rubric": [
+      { "id": "correctness", "description": "Mechanism is technically correct (key per logical operation, server stores result, replay on retry)", "weight": 2 },
+      { "id": "completeness", "description": "Covers edge cases: retries, concurrent in-flight duplicates, key expiry", "weight": 2 },
+      { "id": "concision", "description": "Dense and within the word limit; no filler", "weight": 1 }
+    ],
+    "hardChecks": { "maxWords": 120, "mustInclude": ["Idempotency-Key"] },
+    "offline": {
+      "criterionKeywords": {
+        "correctness": ["same key", "stored response"],
+        "completeness": ["retry", "TTL", "409"],
+        "concision": []
+      },
+      "drafts": [
+        "Clients send an Idempotency-Key header with each payment request. If the network fails, the client can retry with the same key and the server will not charge the card twice because it remembers that it has already seen that key before.",
+        "Idempotency is a really important property for payment APIs, and it is worth spending some time understanding why it matters so much in practice. When a client sends a payment request, it should include an Idempotency-Key header containing a unique value such as a UUID. The server then records this key in its database together with the outcome of the request, which we can call the stored response. Later, if the client did not receive an answer because of a timeout or a dropped connection, it can simply retry the very same request with the same key. The server looks up the key, notices that it has seen it before, and returns the stored response rather than charging the customer a second time. If the first request is still being processed, the server answers 409 Conflict so the client waits. Finally, keys are not kept forever: they expire after a TTL such as 24 hours.",
+        "The client generates a unique Idempotency-Key (e.g. a UUID) per logical payment and sends it as a header. On first receipt the server atomically records the key with a hash of the request body, processes the charge, and saves the stored response under that key. Any retry with the same key replays the stored response instead of charging again. The same key with a different body is rejected (422). If the original request is still in flight, the server returns 409 so the client backs off. Keys expire after a TTL (e.g. 24h) to bound storage."
+      ]
+    }
+  },
+  {
+    "id": "kafka-poison-retry",
+    "prompt": "A Kafka consumer occasionally fails on malformed ('poison') messages and on transient downstream outages. Propose a retry strategy and state its trade-offs.",
+    "reference": "Classify failures: transient (retry with exponential backoff, via retry topics so the main partition isn't blocked) vs. permanent/poison (send to a dead letter topic immediately with error metadata). Retry topics break per-key ordering; if ordering matters, block-and-retry in place or route by key. Consumers must be idempotent because retries cause redelivery.",
+    "rubric": [
+      { "id": "failure_classification", "description": "Distinguishes transient from permanent/poison failures and handles each differently", "weight": 1 },
+      { "id": "mechanism", "description": "Concrete mechanism: retry topics, backoff, dead letter topic", "weight": 2 },
+      { "id": "tradeoffs", "description": "States trade-offs: ordering guarantees, idempotency/duplicates", "weight": 1 }
+    ],
+    "offline": {
+      "criterionKeywords": {
+        "failure_classification": ["transient", "poison"],
+        "mechanism": ["retry topic", "dead letter", "exponential backoff"],
+        "tradeoffs": ["ordering", "idempotent"]
+      },
+      "drafts": [
+        "Separate failures into two classes. Transient errors (downstream timeouts, 503s) are retried in-process with exponential backoff and jitter, capped at a few attempts. Poison messages (deserialization or validation errors) are never retried: publish them to a dead letter topic with the exception, offset and partition in headers, then commit the offset so the partition keeps moving.",
+        "Use a chain of retry topic stages (orders.retry.1m, orders.retry.10m). On failure, publish the record to the next retry topic and commit the offset so the main partition is not blocked. Each stage's consumer waits until the record's due time before reprocessing. Trade-offs: retry topics break per-key ordering, so a later event can overtake an earlier one; and because records are redelivered, the handler must be idempotent.",
+        "Classify failures first. Transient errors (downstream timeouts, 503s): publish to a retry topic chain (retry.1m → retry.10m) implementing exponential backoff, committing the original offset so the partition is not blocked. Poison messages (deserialization/validation errors) are permanent: route straight to a dead letter topic with exception, offset and partition headers, plus alerting and a replay tool. Trade-offs: retry topics break per-key ordering — if ordering matters, block-and-retry in place for that partition instead, accepting head-of-line latency. Redelivery means at-least-once semantics, so the handler must be idempotent (dedupe on event ID)."
+      ]
+    }
+  },
+  {
+    "id": "capacity-math",
+    "prompt": "A service receives 1,200 requests per minute. Each request needs 150 ms of CPU time on a single core. What is the minimum number of cores so that average CPU utilisation stays at or below 70%? Show your reasoning and end with a line 'Final answer: <n>'.",
+    "reference": "1200/60 = 20 req/s; 20 × 0.15 s = 3 core-seconds per second (3 cores fully busy); 3 / 0.7 = 4.29; cores are whole, round up → 5.",
+    "rubric": [
+      { "id": "correctness", "description": "Correct final number with correct handling of the utilisation cap and integer cores", "weight": 3 },
+      { "id": "reasoning", "description": "Each step shown and justified (rate conversion, CPU demand, utilisation, rounding)", "weight": 2 }
+    ],
+    "hardChecks": { "finalAnswer": "5" },
+    "offline": {
+      "criterionKeywords": {
+        "correctness": ["4.29", "5 cores"],
+        "reasoning": ["20 requests/s", "3 core", "round up"]
+      },
+      "drafts": [
+        "1,200 requests/min = 20 requests/s. Each needs 0.15 s of CPU, so demand is 20 × 0.15 = 3 core-seconds per second, i.e. 3 cores fully busy.\nFinal answer: 3",
+        "1,200 requests/min = 20 requests/s. Demand: 20 × 0.15 s = 3 core-seconds per second. To keep utilisation at 70%: 3 / 0.7 = 4.29 cores, so about 4.\nFinal answer: 4",
+        "1,200 requests/min = 20 requests/s. CPU demand: 20 × 0.15 s = 3 core-seconds per second (3 cores fully busy). For utilisation ≤ 70%: cores ≥ 3 / 0.7 = 4.29. Cores are whole units and 4 would mean 75% utilisation, so round up to 5 cores (60%).\nFinal answer: 5"
+      ]
+    }
+  },
+  {
+    "id": "postgres-indexing",
+    "prompt": "A 500M-row Postgres `events` table is queried with `WHERE tenant_id = $1 AND created_at > now() - interval '1 day'`. Queries are slow. Recommend an indexing strategy and how to verify it.",
+    "reference": "Composite B-tree on (tenant_id, created_at) — equality column first, range column second. Consider time-based partitioning for retention and pruning; BRIN on created_at if data is append-only and correlated. Verify with EXPLAIN (ANALYZE, BUFFERS); create with CONCURRENTLY.",
+    "rubric": [
+      { "id": "index_design", "description": "Correct composite index with column order justified", "weight": 2 },
+      { "id": "alternatives", "description": "Considers partitioning and BRIN where appropriate", "weight": 1 },
+      { "id": "verification", "description": "Explains how to verify (EXPLAIN ANALYZE, buffers) and safe rollout", "weight": 1 }
+    ],
+    "offline": {
+      "criterionKeywords": {
+        "index_design": ["composite index", "(tenant_id, created_at)"],
+        "alternatives": ["partitioning", "BRIN"],
+        "verification": ["EXPLAIN ANALYZE", "CONCURRENTLY"]
+      },
+      "drafts": [
+        "Create a composite index on (tenant_id, created_at). The equality column goes first so the planner can seek directly to one tenant, then range-scan the last day by created_at.",
+        "Create a composite index on (tenant_id, created_at): equality column first, range column second, so each query is one index seek plus a short range scan. At this size also consider partitioning by month so old data can be dropped cheaply and the planner prunes partitions."
+      ]
+    }
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "name": "self-reflective-agent",
+  "version": "1.0.0",
+  "description": "Self-reflective agent: execute -> LLM-as-judge -> critique -> constrained regeneration, with improvement metrics",
+  "scripts": {
+    "test": "tsx --test test/*.test.ts",
+    "start": "tsx src/cli.ts",
+    "demo": "tsx src/cli.ts --provider offline",
+    "typecheck": "tsc --noEmit",
+    "spec:validate": "openspec validate --all --strict"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "^1.14.3",
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  }
+}
