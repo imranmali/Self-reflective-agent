@@ -39,7 +39,7 @@ export function constraintsFromHardChecks(task: Task, fails: string[]): Constrai
   });
 }
 
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9"]+/g, " ").trim();
+const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}"]+/gu, " ").trim();
 
 /**
  * Accumulating constraint ledger: constraints persist across iterations so a later
@@ -56,5 +56,5 @@ export function mergeConstraints(existing: Constraint[], incoming: Constraint[],
       merged.push(c);
     }
   }
-  return merged.slice(-cap);
+  return merged.slice(Math.max(0, merged.length - cap));
 }

@@ -84,8 +84,9 @@ export function runHardChecks(task: Task, candidate: string): string[] {
   for (const t of hc.mustInclude ?? []) if (!lower.includes(t.toLowerCase())) fails.push(`missing required term "${t}"`);
   for (const t of hc.mustNotInclude ?? []) if (lower.includes(t.toLowerCase())) fails.push(`contains forbidden term "${t}"`);
   if (hc.finalAnswer) {
-    const m = candidate.match(/final answer\s*[:：]\s*(.+)/i);
-    const got = m?.[1]?.trim().replace(/[.\s*`]+$/, "");
+    // Tolerate Markdown emphasis/code around the label and the answer: **Final answer:** `5`.
+    const m = candidate.match(/final answer[\s*_]*[:：]\s*(.+)/i);
+    const got = m?.[1]?.trim().replace(/^[\s*_`]+/, "").replace(/[.\s*_`]+$/, "");
     if (!got) fails.push(`no "Final answer:" line`);
     else if (got.toLowerCase() !== hc.finalAnswer.toLowerCase()) fails.push(`final answer "${got}" != expected`);
   }

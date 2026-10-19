@@ -33,6 +33,10 @@ The system SHALL check, in code and without the LLM, a task's maximum word count
 - **WHEN** the expected final answer is 5 and the answer ends with `Final answer: 4`
 - **THEN** a hard-check failure is recorded for the final answer
 
+#### Scenario: Markdown around the final answer
+- **WHEN** the expected final answer is 5 and the answer ends with `**Final answer:** `5``
+- **THEN** no final-answer hard-check failure is recorded (Markdown emphasis and code marks around the label and answer are ignored)
+
 #### Scenario: Missing final answer line
 - **WHEN** a final answer is expected and the answer has no `Final answer:` line
 - **THEN** a hard-check failure is recorded
