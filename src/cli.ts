@@ -2,12 +2,13 @@ import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { z } from "zod";
 import { DEFAULT_CONFIG, SelfReflectiveAgent, type ReflectionConfig } from "./agent/loop.ts";
-import { AnthropicProvider } from "./llm/anthropic.ts";
+import { AnthropicProvider, DEFAULT_API_RETRIES, DEFAULT_TIMEOUT_MS } from "./llm/anthropic.ts";
 import { OfflineProvider } from "./llm/offline.ts";
 import type { LLMProvider } from "./llm/provider.ts";
 import { RunLogger } from "./metrics/logger.ts";
 import { summarise } from "./metrics/metrics.ts";
-import { TaskSchema, type TaskRun } from "./types.ts";
+import { TaskSchema } from "./types.ts";
+import { mapPool } from "./util/pool.ts";
 
 const { values: a } = parseArgs({
   options: {
@@ -21,6 +22,9 @@ const { values: a } = parseArgs({
     "judge-samples": { type: "string", default: String(DEFAULT_CONFIG.judgeSamples) },
     "gen-model": { type: "string", default: process.env.GEN_MODEL ?? "claude-sonnet-5-5" },
     "judge-model": { type: "string", default: process.env.JUDGE_MODEL ?? "claude-opus-5-5" },
+    concurrency: { type: "string", default: process.env.CONCURRENCY ?? "1" },
+    "api-retries": { type: "string", default: String(DEFAULT_API_RETRIES) },
+    "api-timeout-ms": { type: "string", default: String(DEFAULT_TIMEOUT_MS) },
     out: { type: "string", default: "runs" },
     quiet: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
@@ -34,6 +38,8 @@ if (a.help) {
   --only <id[,id]>               run a subset
   --max-iters N  --threshold X  --patience N  --min-delta X  --judge-samples N
   --gen-model M  --judge-model M (judge model is also used for the critic)
+  --concurrency N                tasks run in parallel (default 1, or $CONCURRENCY)
+  --api-retries N  --api-timeout-ms N  anthropic SDK retries on 429/5xx (default ${DEFAULT_API_RETRIES}), request timeout (default ${DEFAULT_TIMEOUT_MS})
   --out <dir>    --quiet`);
   process.exit(0);
 }
@@ -51,10 +57,21 @@ const fail = (msg: string): never => {
   console.error(`error: ${msg}`);
   process.exit(2);
 };
+const int = (flag: "concurrency" | "api-retries" | "api-timeout-ms", min: number): number => {
+  const n = Number(a[flag]);
+  return a[flag] !== "" && Number.isInteger(n) && n >= min ? n : fail(`--${flag} must be an integer >= ${min}, got "${a[flag]}"`);
+};
+const concurrency = int("concurrency", 1);
+const apiRetries = int("api-retries", 0);
+const apiTimeoutMs = int("api-timeout-ms", 1);
 if (!["offline", "anthropic"].includes(a.provider!)) fail(`unknown --provider ${a.provider} (expected offline|anthropic)`);
 const llm: LLMProvider =
   a.provider === "anthropic"
-    ? new AnthropicProvider({ models: { generator: a["gen-model"]!, judge: a["judge-model"]!, critic: a["judge-model"]! } })
+    ? new AnthropicProvider({
+        models: { generator: a["gen-model"]!, judge: a["judge-model"]!, critic: a["judge-model"]! },
+        apiRetries,
+        timeoutMs: apiTimeoutMs,
+      })
     : new OfflineProvider();
 
 const parsed = z.array(TaskSchema).safeParse(JSON.parse(readFileSync(a.tasks!, "utf8")));
@@ -70,14 +87,15 @@ if (a.only) {
 const logger = new RunLogger(a.out!, !a.quiet);
 const config = {
   provider: llm.name,
-  ...(llm.name === "anthropic" ? { genModel: a["gen-model"], judgeModel: a["judge-model"] } : {}),
+  concurrency,
+  ...(llm.name === "anthropic" ? { genModel: a["gen-model"], judgeModel: a["judge-model"], apiRetries, apiTimeoutMs } : {}),
   ...cfg,
 };
 logger.event("run_start", { config, tasks: tasks.map((t) => t.id) });
 
+// The agent keeps all per-task state inside run(), so one instance serves concurrent tasks; results keep suite order.
 const agent = new SelfReflectiveAgent(llm, cfg, logger);
-const runs: TaskRun[] = [];
-for (const task of tasks) runs.push(await agent.run(task));
+const runs = await mapPool(tasks, concurrency, (task) => agent.run(task));
 
 const summary = summarise(runs);
 logger.event("run_end", { summary });

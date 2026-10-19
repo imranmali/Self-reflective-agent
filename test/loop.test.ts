@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import { DEFAULT_CONFIG, SelfReflectiveAgent } from "../src/agent/loop.ts";
 import { OfflineProvider } from "../src/llm/offline.ts";
-import { spyProvider, task } from "./helpers.ts";
+import { RunLogger } from "../src/metrics/logger.ts";
+import { mapPool } from "../src/util/pool.ts";
+import { spyProvider, suite, task } from "./helpers.ts";
 
 describe("reflection loop", () => {
   it("improves, passes, stops, and returns the passing attempt", async () => {
@@ -66,5 +71,27 @@ describe("reflection loop", () => {
       if (r.role === "judge") throw new Error("judge outage");
     });
     await assert.rejects(new SelfReflectiveAgent(provider).run(task("capacity-math")), /judge outage/);
+  });
+});
+
+describe("concurrent tasks", () => {
+  it("a shared agent + provider at concurrency 4 gives the same per-task runs as sequential", async () => {
+    const sequential = await mapPool(suite, 1, (t) => new SelfReflectiveAgent(new OfflineProvider()).run(t));
+    const log = new RunLogger(mkdtempSync(join(tmpdir(), "sra-par-")), false, "r");
+    const agent = new SelfReflectiveAgent(new OfflineProvider(), DEFAULT_CONFIG, log);
+    const parallel = await mapPool(suite, 4, (t) => agent.run(t));
+
+    const view = (rs: typeof parallel) =>
+      rs.map((r) => ({ id: r.taskId, traj: r.metrics.scoreTrajectory, best: r.bestIteration, stop: r.stopReason, out: r.attempts.map((a) => a.output) }));
+    assert.deepEqual(view(parallel), view(sequential));
+
+    // events interleave across tasks, but every line is valid JSON and each task's iterations stay ordered
+    const events = readFileSync(join(log.dir, "events.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const ids = events.map((e) => e.taskId);
+    assert.ok(ids.some((id, i) => i > 0 && id !== ids[i - 1] && ids.slice(0, i).includes(id)), "tasks should interleave");
+    for (const t of suite) {
+      const its = events.filter((e) => e.taskId === t.id && e.type === "judged").map((e) => e.iteration);
+      assert.deepEqual(its, [...its.keys()]);
+    }
   });
 });
