@@ -4,6 +4,7 @@
   "description": "Self-reflective agent: execute -> LLM-as-judge -> critique -> constrained regeneration, with improvement metrics",
   "scripts": {
     "test": "tsx --test test/*.test.ts",
+    "test:coverage": "tsx --test --experimental-test-coverage --test-coverage-exclude=\"test/**\" --test-coverage-lines=80 --test-coverage-branches=75 --test-coverage-functions=90 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=lcov.info test/*.test.ts",
     "start": "tsx src/cli.ts",
     "demo": "tsx src/cli.ts --provider offline",
     "typecheck": "tsc --noEmit",
