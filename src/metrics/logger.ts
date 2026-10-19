@@ -76,7 +76,7 @@ export function renderReport(runs: TaskRun[], s: SuiteSummary, config: Record<st
     `| Tasks | ${s.tasks} |`,
     `| Pass rate (first draft → final) | ${pct(s.passRateInitial)} → ${pct(s.passRateFinal)} |`,
     `| Mean score (first draft → final) | ${s.meanInitialScore} → ${s.meanFinalScore} |`,
-    `| Mean absolute gain | +${s.meanAbsoluteGain} |`,
+    `| Mean absolute gain | ${s.meanAbsoluteGain >= 0 ? "+" : ""}${s.meanAbsoluteGain} |`,
     `| Mean gap-to-10 closed | ${s.meanGapClosedPct}% |`,
     `| Mean iterations | ${s.meanIterations} |`,
     `| Tasks improved / net-regressed | ${s.tasksImproved} / ${s.tasksRegressedNet} |`,

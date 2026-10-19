@@ -77,6 +77,9 @@ const llm: LLMProvider =
 const parsed = z.array(TaskSchema).safeParse(JSON.parse(readFileSync(a.tasks!, "utf8")));
 if (!parsed.success) fail(`invalid task suite ${a.tasks}:\n${z.prettifyError(parsed.error!)}`);
 let tasks = parsed.data!;
+// Task ids key per-task provider state and log events, so they must be unique (especially with --concurrency).
+const dupes = [...new Set(tasks.map((t) => t.id).filter((id, i, ids) => ids.indexOf(id) !== i))];
+if (dupes.length) fail(`duplicate task id(s) in ${a.tasks}: ${dupes.join(", ")}`);
 if (a.only) {
   const ids = a.only.split(",");
   const unknown = ids.filter((id) => !tasks.some((t) => t.id === id));
