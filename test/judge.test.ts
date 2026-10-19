@@ -70,6 +70,33 @@ describe("judge call", () => {
     assert.deepEqual(usage, { inputTokens: 3, outputTokens: 3 });
   });
 
+  it("requests samples concurrently, keeping verdict order", async () => {
+    let inFlight = 0;
+    let max = 0;
+    let n = 0;
+    const slow: LLMProvider = {
+      name: "slow",
+      text: async () => ({ text: "", usage: { inputTokens: 0, outputTokens: 0 } }),
+      json: async <T,>() => {
+        const i = n++;
+        max = Math.max(max, ++inFlight);
+        await new Promise((r) => setTimeout(r, 20 - 5 * i)); // first sample resolves last
+        inFlight--;
+        const s = i === 0 ? 10 : 6;
+        return {
+          data: { scores: [{ id: "correctness", score: s, rationale: `r${i}` }, { id: "reasoning", score: s, rationale: `r${i}` }], reasoningFlaws: [], summary: `s${i}` } as T,
+          usage: { inputTokens: 1, outputTokens: 2 },
+        };
+      },
+    };
+    const { verdict, usage } = await judge(slow, t, "x", 0, { passThreshold: 8, samples: 3 });
+    assert.equal(max, 3);
+    assert.equal(verdict.summary, "s0");
+    assert.equal(verdict.scores[0]!.rationale, "r0 | r1 | r2");
+    assert.equal(verdict.scores[0]!.score, 7.3);
+    assert.deepEqual(usage, { inputTokens: 3, outputTokens: 6 });
+  });
+
   it("averages multiple samples and unions flaws", () => {
     const v2: Verdict = { ...v, reasoningFlaws: ["x"], scores: [{ id: "correctness", score: 6, rationale: "" }, { id: "reasoning", score: 7, rationale: "" }] };
     const a = aggregate([v, v2]);

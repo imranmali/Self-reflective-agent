@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
@@ -44,6 +44,35 @@ describe("cli", () => {
     const r = cli("--help");
     assert.equal(r.code, 0);
     assert.match(r.out, /--judge-model/);
+  });
+});
+
+describe("cli --concurrency", () => {
+  it("runs the suite with concurrency 2 and records it in the run config", () => {
+    const r = cli("--concurrency", "2");
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, /pass rate 0% → 75%/);
+    const dir = r.out.match(/artifacts: (.+)\/\{/)![1]!;
+    assert.equal(JSON.parse(readFileSync(join(dir, "summary.json"), "utf8")).config.concurrency, 2);
+  });
+
+  it("rejects a non-positive or non-integer concurrency", () => {
+    for (const n of ["0", "-1", "1.5", "x"]) {
+      const r = cli(`--concurrency=${n}`);
+      assert.equal(r.code, 2, r.out);
+      assert.match(r.out, /error: --concurrency must be an integer >= 1/);
+    }
+  });
+
+  it("reads CONCURRENCY from the environment", () => {
+    const r = spawnSync(process.execPath, ["--import", "tsx", "src/cli.ts", "--out", out, "--quiet"], { env: { ...env, CONCURRENCY: "0" }, encoding: "utf8" });
+    assert.equal(r.status, 2);
+    assert.match(r.stderr, /--concurrency must be/);
+  });
+
+  it("documents the new flags in --help", () => {
+    const r = cli("--help");
+    for (const f of ["--concurrency", "--api-retries", "--api-timeout-ms"]) assert.ok(r.out.includes(f), f);
   });
 });
 

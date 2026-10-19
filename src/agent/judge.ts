@@ -7,7 +7,7 @@ export const HARD_CHECK_PENALTY = 1.5;
 
 export interface JudgeOptions {
   passThreshold: number;
-  /** >1 samples the judge several times and averages — cuts variance from a single noisy verdict. */
+  /** >1 samples the judge several times (concurrently) and averages — cuts variance from a single noisy verdict. */
   samples?: number;
 }
 
@@ -19,23 +19,24 @@ export async function judge(
   opts: JudgeOptions,
 ): Promise<{ verdict: ScoredVerdict; usage: Usage }> {
   const n = Math.max(1, opts.samples ?? 1);
-  let usage = ZERO_USAGE;
-  const verdicts: Verdict[] = [];
-  for (let i = 0; i < n; i++) {
-    const r = await llm.json(
-      {
-        role: "judge",
-        system: JUDGE_SYSTEM,
-        prompt: judgePrompt(task, candidate),
-        temperature: n > 1 ? 0.3 : 0,
-        meta: { task, iteration, candidate },
-      },
-      VerdictSchema,
-      "submit_verdict",
-    );
-    usage = addUsage(usage, r.usage);
-    verdicts.push(normalise(task, r.data));
-  }
+  // Samples are independent, so request them concurrently; Promise.all keeps verdict order stable.
+  const rs = await Promise.all(
+    Array.from({ length: n }, () =>
+      llm.json(
+        {
+          role: "judge",
+          system: JUDGE_SYSTEM,
+          prompt: judgePrompt(task, candidate),
+          temperature: n > 1 ? 0.3 : 0,
+          meta: { task, iteration, candidate },
+        },
+        VerdictSchema,
+        "submit_verdict",
+      ),
+    ),
+  );
+  const usage = rs.reduce((u, r) => addUsage(u, r.usage), ZERO_USAGE);
+  const verdicts: Verdict[] = rs.map((r) => normalise(task, r.data));
   return { verdict: score(task, aggregate(verdicts), candidate, opts.passThreshold), usage };
 }
 

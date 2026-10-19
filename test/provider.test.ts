@@ -73,6 +73,20 @@ describe("AnthropicProvider", () => {
   });
 });
 
+describe("AnthropicProvider SDK client", () => {
+  const sdk = (p: AnthropicProvider) => (p as unknown as { client: Anthropic }).client;
+  it("builds its own client with retry/backoff and timeout defaults", () => {
+    const c = sdk(new AnthropicProvider({ models }));
+    assert.equal(c.maxRetries, 4);
+    assert.equal(c.timeout, 120_000);
+  });
+  it("takes apiRetries and timeoutMs from options", () => {
+    const c = sdk(new AnthropicProvider({ models, apiRetries: 7, timeoutMs: 5_000 }));
+    assert.equal(c.maxRetries, 7);
+    assert.equal(c.timeout, 5_000);
+  });
+});
+
 describe("OfflineProvider", () => {
   it("is deterministic across runs", async () => {
     const trajectories = async () => {
