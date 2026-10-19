@@ -14,9 +14,17 @@ import {
 export interface AnthropicProviderOptions {
   /** Per-role models: use a different (ideally stronger) model for judge/critic to limit self-preference bias. */
   models: Record<Role, string>;
+  /** Schema-validation retries in `json()` (re-asks with the validation error). */
   maxRetries?: number;
+  /** SDK-level retries with exponential backoff on 408/409/429/5xx and connection errors. */
+  apiRetries?: number;
+  /** Per-request timeout in ms. */
+  timeoutMs?: number;
   client?: Anthropic;
 }
+
+export const DEFAULT_API_RETRIES = 4;
+export const DEFAULT_TIMEOUT_MS = 120_000;
 
 export class AnthropicProvider implements LLMProvider {
   readonly name = "anthropic";
@@ -25,7 +33,10 @@ export class AnthropicProvider implements LLMProvider {
   private maxRetries: number;
 
   constructor(opts: AnthropicProviderOptions) {
-    this.client = opts.client ?? new Anthropic(); // reads ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL
+    // reads ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL; retries/timeout matter once tasks run concurrently (429s)
+    this.client =
+      opts.client ??
+      new Anthropic({ maxRetries: opts.apiRetries ?? DEFAULT_API_RETRIES, timeout: opts.timeoutMs ?? DEFAULT_TIMEOUT_MS });
     this.models = opts.models;
     this.maxRetries = opts.maxRetries ?? 2;
   }
